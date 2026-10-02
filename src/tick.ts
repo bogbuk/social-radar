@@ -25,9 +25,13 @@ export interface TickResult {
 export async function collectPosts(deps: TickDeps): Promise<Post[]> {
   const subs = [...new Set(deps.projects.flatMap((p) => p.subreddits))];
   const queries = [...new Set(deps.projects.flatMap((p) => p.queries ?? []))];
-  const batches = await Promise.all([...subs.map((s) => deps.reddit.newPosts(s)), ...queries.map((q) => deps.reddit.search(q))]);
+  const results = await Promise.allSettled([...subs.map((s) => deps.reddit.newPosts(s)), ...queries.map((q) => deps.reddit.search(q))]);
+  const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  // Один упавший сабреддит не должен ронять тик (RSS отдаёт 429 поштучно); упали все — источник лёг.
+  if (failed.length > 0 && failed.length === results.length) throw failed[0].reason;
+  for (const f of failed) (deps.log ?? console.log)('collect: source failed', String(f.reason));
   const byId = new Map<string, Post>();
-  for (const p of batches.flat()) if (!byId.has(p.id)) byId.set(p.id, p);
+  for (const r of results) if (r.status === 'fulfilled') for (const p of r.value) if (!byId.has(p.id)) byId.set(p.id, p);
   return [...byId.values()].sort((a, b) => b.createdUtc - a.createdUtc);
 }
 

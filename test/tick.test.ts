@@ -123,11 +123,19 @@ describe('tick', () => {
     expect(send).toHaveBeenCalledTimes(1);
     expect(seenOf(d.kv)).toEqual([]);
   });
-  it('reddit failure → aborted, nothing marked, nothing sent', async () => {
+  it('all sources failing → aborted, nothing marked, nothing sent', async () => {
     const d = deps({ reddit: { newPosts: async () => { throw new Error('429'); }, search: async () => [] } });
     const r = await tick(d);
     expect(r.aborted).toContain('429');
     expect(d.sent).toEqual([]);
     expect(d.kv._m.has(SEEN_KEY)).toBe(false);
+  });
+  it('one subreddit failing → the others are still processed', async () => {
+    const newPosts = vi.fn(async (sub: string) => { if (sub === 'Truckers') throw new Error('429'); return [post('a')]; });
+    const d = deps({ projects: [proj({ subreddits: ['Truckers', 'CDL'] })], reddit: { newPosts, search: async () => [] } });
+    const r = await tick(d);
+    expect(r.aborted).toBeUndefined();
+    expect(r.sent).toBe(1);
+    expect(seenOf(d.kv)).toEqual(['a']);
   });
 });

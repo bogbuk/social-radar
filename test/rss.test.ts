@@ -37,20 +37,29 @@ describe('parseAtom', () => {
 describe('RssClient', () => {
   it('fetches /r/<sub>/new.rss with a browser-like user agent', async () => {
     const fetchFn = vi.fn().mockResolvedValue(new Response(xml, { status: 200 }));
-    const posts = await new RssClient(fetchFn as any).newPosts('CDL');
+    const posts = await new RssClient(fetchFn as any, 0).newPosts('CDL');
     expect(posts).toHaveLength(3);
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe('https://www.reddit.com/r/CDL/new.rss?limit=25');
     expect(init.headers['User-Agent']).toMatch(/Mozilla/);
   });
+  it('spaces requests by minGapMs (Reddit allows ~1 unauthenticated request per 30 s per IP)', async () => {
+    const times: number[] = [];
+    const fetchFn = vi.fn(async () => { times.push(Date.now()); return new Response(xml, { status: 200 }); });
+    const c = new RssClient(fetchFn as any, 120);
+    await Promise.all([c.newPosts('A'), c.newPosts('B'), c.newPosts('C')]);
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+    expect(times[1] - times[0]).toBeGreaterThanOrEqual(100);
+    expect(times[2] - times[1]).toBeGreaterThanOrEqual(100);
+  });
   it('search is unsupported and returns []', async () => {
     const fetchFn = vi.fn();
-    expect(await new RssClient(fetchFn as any).search('q')).toEqual([]);
+    expect(await new RssClient(fetchFn as any, 0).search('q')).toEqual([]);
     expect(fetchFn).not.toHaveBeenCalled();
   });
   it('throws RssError with status on 429', async () => {
     const fetchFn = vi.fn().mockResolvedValue(new Response('', { status: 429 }));
-    const err = await new RssClient(fetchFn as any).newPosts('CDL').catch((e) => e);
+    const err = await new RssClient(fetchFn as any, 0).newPosts('CDL').catch((e) => e);
     expect(err).toBeInstanceOf(RssError);
     expect(err.status).toBe(429);
   });
@@ -64,7 +73,7 @@ describe('default fetch binding', () => {
     });
     vi.stubGlobal('fetch', strictFetch);
     try {
-      expect(await new RssClient().newPosts('CDL')).toHaveLength(3);
+      expect(await new RssClient(undefined, 0).newPosts('CDL')).toHaveLength(3);
     } finally {
       vi.unstubAllGlobals();
     }

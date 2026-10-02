@@ -65,11 +65,36 @@ export function parseAtom(xml: string, subreddit: string): Post[] {
   return posts;
 }
 
-export class RssClient {
-  // Не `= fetch`: вызов this.fetchFn(...) передал бы экземпляр как this → Illegal invocation в Workers.
-  constructor(private fetchFn: typeof fetch = (input, init) => fetch(input, init)) {}
+// Reddit без авторизации: ~1 запрос в 30 с с одного IP (x-ratelimit-remaining=0 после первого же).
+export const RSS_MIN_GAP_MS = 31_000;
 
-  async newPosts(sub: string, limit = 25): Promise<Post[]> {
+export class RssClient {
+  private chain: Promise<unknown> = Promise.resolve();
+  private lastAt = 0;
+
+  // Не `= fetch`: вызов this.fetchFn(...) передал бы экземпляр как this → Illegal invocation в Workers.
+  constructor(
+    private fetchFn: typeof fetch = (input, init) => fetch(input, init),
+    private minGapMs: number = RSS_MIN_GAP_MS,
+  ) {}
+
+  // Запросы строго по одному, с паузой minGapMs между стартами (ожидание — не CPU-время Workers).
+  private paced<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.chain.then(async () => {
+      const wait = this.lastAt + this.minGapMs - Date.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      this.lastAt = Date.now();
+      return fn();
+    });
+    this.chain = run.catch(() => undefined);
+    return run;
+  }
+
+  newPosts(sub: string, limit = 25): Promise<Post[]> {
+    return this.paced(() => this.fetchNew(sub, limit));
+  }
+
+  private async fetchNew(sub: string, limit: number): Promise<Post[]> {
     const res = await this.fetchFn(`https://www.reddit.com/r/${encodeURIComponent(sub)}/new.rss?limit=${limit}`, {
       headers: { 'User-Agent': BROWSER_UA, Accept: 'application/atom+xml, application/xml;q=0.9, */*;q=0.8' },
     });

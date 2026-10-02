@@ -6,6 +6,7 @@ import { judge } from './ai';
 import { buildMessages } from './prompt';
 import { sendTelegram } from './telegram';
 import { tick, type TickResult } from './tick';
+import { samplePost } from './sample';
 
 export interface Env {
   RADAR: KVNamespace;
@@ -32,8 +33,11 @@ function makeSource(env: Env) {
   );
 }
 
-function runTick(env: Env): Promise<TickResult> {
-  const reddit = makeSource(env);
+function runTick(env: Env, sample = false): Promise<TickResult> {
+  // sample=1: вместо Reddit — один синтетический пост; seen пишется в отдельный KV? Нет: id уникален по времени.
+  const reddit = sample
+    ? { newPosts: async () => [samplePost(Date.now())], search: async () => [] }
+    : makeSource(env);
   return tick({
     projects: PROJECTS,
     reddit,
@@ -59,7 +63,7 @@ export default {
     }
     if (url.pathname === '/run' && req.method === 'POST') {
       if (!env.RUN_KEY || url.searchParams.get('key') !== env.RUN_KEY) return new Response('unauthorized', { status: 401 });
-      return Response.json(await runTick(env));
+      return Response.json(await runTick(env, url.searchParams.get('sample') === '1'));
     }
     return new Response('not found', { status: 404 });
   },

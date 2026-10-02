@@ -105,7 +105,11 @@ export class RssClient {
       headers: { 'User-Agent': BROWSER_UA, Accept: 'application/atom+xml, application/xml;q=0.9, */*;q=0.8' },
     });
     if (!res.ok) throw new RssError(res.status, `GET /r/${sub}/new.rss ${res.status}`);
-    return parseAtom(await res.text(), sub);
+    const body = await res.text();
+    const posts = parseAtom(body, sub);
+    // 200 с нулём постов = Reddit отдал не Atom (заглушка/челлендж): видно в wrangler tail.
+    if (posts.length === 0) console.log(`rss: r/${sub} status=200 posts=0 bytes=${body.length} head=${JSON.stringify(body.slice(0, 80))}`);
+    return posts;
   }
 
   async search(_q: string): Promise<Post[]> {

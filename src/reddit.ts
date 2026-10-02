@@ -46,11 +46,23 @@ export class RedditClient {
     private fetchFn: typeof fetch = fetch,
   ) {}
 
+  private inflight: Promise<string> | null = null;
+
+  // Single-flight: параллельные запросы тика с пустым кэшем делят один password-grant, а не восемь.
   async token(force = false): Promise<string> {
     if (!force) {
       const cached = await this.kv.get(TOKEN_KEY);
       if (cached) return cached;
     }
+    if (!this.inflight) {
+      this.inflight = this.fetchToken().finally(() => {
+        this.inflight = null;
+      });
+    }
+    return this.inflight;
+  }
+
+  private async fetchToken(): Promise<string> {
     const basic = btoa(`${this.auth.clientId}:${this.auth.clientSecret}`);
     const res = await this.fetchFn('https://www.reddit.com/api/v1/access_token', {
       method: 'POST',

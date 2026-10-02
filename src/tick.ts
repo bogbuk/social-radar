@@ -54,17 +54,23 @@ export async function tick(deps: TickDeps): Promise<TickResult> {
   }
 
   let sent = 0;
+  let judged = 0;
   let queued = 0;
   let telegramDown = false;
+  // Бюджет вызовов модели на тик: иначе десятки кандидатов ниже порога = десятки вызовов 120B за тик.
+  const maxJudges = deps.maxCards * 2;
   for (let i = 0; i < work.length; i++) {
     const { post, projects } = work[i];
-    // `sent > 0 &&`: пост, подходящий большему числу проектов, чем потолок, иначе застрял бы навсегда.
-    if (telegramDown || (sent > 0 && sent + projects.length > deps.maxCards)) {
+    // `sent > 0 &&` / `judged > 0 &&`: пост, подходящий большему числу проектов, чем потолок, иначе застрял бы навсегда.
+    const overCards = sent > 0 && sent + projects.length > deps.maxCards;
+    const overJudges = judged > 0 && judged + projects.length > maxJudges;
+    if (telegramDown || overCards || overJudges) {
       queued = work.length - i;
       break;
     }
     const cards: Card[] = [];
     for (const project of projects) {
+      judged++;
       const verdict = await deps.judge(project, post);
       if (verdict && verdict.relevant < project.threshold) continue;
       cards.push({ project, post, verdict });

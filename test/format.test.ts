@@ -38,6 +38,11 @@ describe('formatCard', () => {
   it('empty draft → no Draft section', () => {
     expect(formatCard(card({ verdict: { relevant: 8, reason: 'r', draft: '' } }), now)).not.toContain('Draft:');
   });
+  it('caps the whole card even without a draft: long title + long reason stay under TG_LIMIT', () => {
+    const text = formatCard(card({ post: { ...card().post, title: 'T'.repeat(3000) }, verdict: { relevant: 8, reason: 'R'.repeat(3000), draft: '' } }), now);
+    expect(text.length).toBeLessThanOrEqual(TG_LIMIT);
+    expect(text).toContain('https://www.reddit.com/r/CDL/comments/abc/x/');
+  });
   it('truncates long drafts to TG_LIMIT with ellipsis', () => {
     const text = formatCard(card({ verdict: { relevant: 8, reason: 'r', draft: 'x'.repeat(10_000) } }), now);
     expect(text.length).toBeLessThanOrEqual(TG_LIMIT);

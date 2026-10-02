@@ -74,6 +74,13 @@ describe('RedditClient', () => {
     expect(err).toBeInstanceOf(RedditError);
     expect(err.status).toBe(429);
   });
+  it('parallel requests with an empty cache fetch the token once (single-flight)', async () => {
+    const kv = memKv();
+    const fetchFn = vi.fn(async (url: string) => (url.includes('access_token') ? json({ access_token: 'T', expires_in: 3600 }) : json(fixture)));
+    const c = new RedditClient(auth, kv, 'ua/1', fetchFn as any);
+    await Promise.all([c.newPosts('A'), c.newPosts('B'), c.newPosts('C')]);
+    expect(fetchFn.mock.calls.filter(([u]) => String(u).includes('access_token'))).toHaveLength(1);
+  });
   it('search encodes query and uses sort=new&t=day', async () => {
     const kv = memKv(); kv._m.set('token:reddit', 'T');
     const fetchFn = vi.fn().mockResolvedValueOnce(json(fixture));

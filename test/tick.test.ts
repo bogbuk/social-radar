@@ -106,6 +106,15 @@ describe('tick', () => {
     expect(d.sent[5]).toBe('Ещё 2 в очереди, следующий тик.');
     expect(seenOf(d.kv).sort()).toEqual(['a', 'b', 'c', 'd', 'e']);
   });
+  it('limits model calls per tick to 2×maxCards even when nothing passes the threshold', async () => {
+    const posts = Array.from({ length: 20 }, (_, i) => post(`p${i}`, { createdUtc: 1_700_000_000 - i }));
+    const judge = vi.fn(async () => ({ relevant: 1, reason: 'no', draft: '' }));
+    const d = deps({ maxCards: 5, judge, reddit: { newPosts: async () => posts, search: async () => [] } });
+    const r = await tick(d);
+    expect(judge).toHaveBeenCalledTimes(10);
+    expect(r.queued).toBe(10);
+    expect(seenOf(d.kv)).toHaveLength(10);
+  });
   it('telegram failure → post not marked seen, tick stops sending', async () => {
     const send = vi.fn().mockResolvedValue(false);
     const d = deps({ send, reddit: { newPosts: async () => [post('a'), post('b')], search: async () => [] } });

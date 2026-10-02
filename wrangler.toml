@@ -10,7 +10,7 @@ binding = "AI"
 
 [[kv_namespaces]]
 binding = "RADAR"
-id = "REPLACE_AFTER_KV_CREATE"
+id = "f0f09e6bbd1d401ca67324fa4794d69a"
 
 [vars]
 AI_MODEL = "@cf/openai/gpt-oss-120b"

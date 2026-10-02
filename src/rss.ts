@@ -66,7 +66,7 @@ export function parseAtom(xml: string, subreddit: string): Post[] {
 }
 
 // Reddit без авторизации: ~1 запрос в 30 с с одного IP (x-ratelimit-remaining=0 после первого же).
-export const RSS_MIN_GAP_MS = 31_000;
+export const RSS_MIN_GAP_MS = 35_000;
 
 export class RssClient {
   private chain: Promise<unknown> = Promise.resolve();
@@ -90,8 +90,14 @@ export class RssClient {
     return run;
   }
 
-  newPosts(sub: string, limit = 25): Promise<Post[]> {
-    return this.paced(() => this.fetchNew(sub, limit));
+  // 429 — окно лимита ещё не закрылось (или IP Cloudflare делят соседи): одна повторная попытка после паузы.
+  async newPosts(sub: string, limit = 25): Promise<Post[]> {
+    try {
+      return await this.paced(() => this.fetchNew(sub, limit));
+    } catch (e) {
+      if (!(e instanceof RssError) || e.status !== 429) throw e;
+      return this.paced(() => this.fetchNew(sub, limit));
+    }
   }
 
   private async fetchNew(sub: string, limit: number): Promise<Post[]> {

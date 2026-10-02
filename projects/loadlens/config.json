@@ -34,7 +34,19 @@
       "dispatcher",
       "rate per mile",
       "deadhead",
-      "ELD"
+      "ELD",
+      "logbook",
+      "log book",
+      "sleeper berth",
+      "on duty",
+      "on-duty",
+      "drive time",
+      "driving hours",
+      "elog",
+      "e-log",
+      "clock",
+      "reset",
+      "dispatch"
     ],
     "exclude": [
       "hiring",

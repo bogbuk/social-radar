@@ -57,7 +57,12 @@ describe('RssClient', () => {
     expect(await new RssClient(fetchFn as any, 0).search('q')).toEqual([]);
     expect(fetchFn).not.toHaveBeenCalled();
   });
-  it('throws RssError with status on 429', async () => {
+  it('retries once after a 429, then succeeds', async () => {
+    const fetchFn = vi.fn().mockResolvedValueOnce(new Response('', { status: 429 })).mockResolvedValueOnce(new Response(xml, { status: 200 }));
+    expect(await new RssClient(fetchFn as any, 0).newPosts('CDL')).toHaveLength(3);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+  it('throws RssError with status on persistent 429', async () => {
     const fetchFn = vi.fn().mockResolvedValue(new Response('', { status: 429 }));
     const err = await new RssClient(fetchFn as any, 0).newPosts('CDL').catch((e) => e);
     expect(err).toBeInstanceOf(RssError);

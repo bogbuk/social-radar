@@ -1,0 +1,23 @@
+name = "social-radar"
+main = "src/index.ts"
+compatibility_date = "2026-10-02"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "RADAR"
+id = "REPLACE_AFTER_KV_CREATE"
+
+[vars]
+AI_MODEL = "@cf/openai/gpt-oss-120b"
+MAX_CARDS_PER_TICK = "5"
+VERSION = "0.1.0"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true

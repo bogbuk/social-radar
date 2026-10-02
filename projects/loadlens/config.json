@@ -7,7 +7,12 @@
     "CDL",
     "TruckDrivers",
     "FreightBrokers",
-    "SideProject"
+    "SideProject",
+    "FreightDispatchers",
+    "TruckDispatch",
+    "Dispatchers",
+    "OwnerOperators",
+    "Trucking"
   ],
   "queries": [
     "\"hours of service\" calculator",

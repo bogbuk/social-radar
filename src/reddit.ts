@@ -1,9 +1,5 @@
 import type { Post } from './types';
-
-export interface KVLike {
-  get(key: string): Promise<string | null>;
-  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
-}
+import type { KVLike } from './seen';
 
 export interface RedditAuth {
   clientId: string;

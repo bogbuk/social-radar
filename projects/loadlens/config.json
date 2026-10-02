@@ -1,0 +1,13 @@
+{
+  "slug": "loadlens",
+  "name": "LoadLens",
+  "landing": "https://loadlens.krait.studio/hos-calculator/",
+  "subreddits": ["Truckers", "CDL", "TruckDrivers", "FreightBrokers", "SideProject"],
+  "queries": ["\"hours of service\" calculator", "recap hours 70/8", "\"14 hour\" clock dispatcher"],
+  "keywords": {
+    "any": ["hours of service", "HOS", "14 hour", "14-hour", "11 hour", "11-hour", "70/8", "recap", "34 reset", "34 hour reset", "split sleeper", "8/2", "7/3", "dispatcher", "rate per mile", "deadhead", "ELD"],
+    "exclude": ["hiring", "for sale", "meme", "[Hiring]", "now hiring"]
+  },
+  "maxAgeHours": 24,
+  "threshold": 7
+}

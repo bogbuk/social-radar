@@ -89,3 +89,18 @@ describe('RedditClient', () => {
     expect(fetchFn.mock.calls[0][0]).toBe('https://oauth.reddit.com/search?q=%22hours%20of%20service%22%20calculator&sort=new&t=day&limit=25&raw_json=1');
   });
 });
+
+describe('default fetch binding', () => {
+  it('calls global fetch without a foreign `this`', async () => {
+    const strictFetch = vi.fn(function (this: unknown, url: string) {
+      if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve(url.includes('access_token') ? json({ access_token: 'T', expires_in: 3600 }) : json(fixture));
+    });
+    vi.stubGlobal('fetch', strictFetch);
+    try {
+      expect(await new RedditClient(auth, memKv(), 'ua/1').newPosts('CDL')).toHaveLength(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

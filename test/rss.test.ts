@@ -55,3 +55,18 @@ describe('RssClient', () => {
     expect(err.status).toBe(429);
   });
 });
+
+describe('default fetch binding', () => {
+  it('calls global fetch without a foreign `this` (Workers throw Illegal invocation otherwise)', async () => {
+    const strictFetch = vi.fn(function (this: unknown) {
+      if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve(new Response(xml, { status: 200 }));
+    });
+    vi.stubGlobal('fetch', strictFetch);
+    try {
+      expect(await new RssClient().newPosts('CDL')).toHaveLength(3);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

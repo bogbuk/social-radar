@@ -14,3 +14,18 @@ describe('sendTelegram', () => {
     expect(await sendTelegram('T', '1', 'x', vi.fn().mockRejectedValue(new Error('net')) as any)).toBe(false);
   });
 });
+
+describe('default fetch binding', () => {
+  it('calls global fetch without a foreign `this`', async () => {
+    const strictFetch = vi.fn(function (this: unknown) {
+      if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+      return Promise.resolve(new Response('{"ok":true}', { status: 200 }));
+    });
+    vi.stubGlobal('fetch', strictFetch);
+    try {
+      expect(await sendTelegram('T', '1', 'x')).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

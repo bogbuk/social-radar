@@ -43,7 +43,7 @@ export class RedditClient {
     private auth: RedditAuth,
     private kv: KVLike,
     private userAgent: string,
-    private fetchFn: typeof fetch = fetch,
+    private fetchFn: typeof fetch = (input, init) => fetch(input, init), // не `= fetch`: Illegal invocation в Workers
   ) {}
 
   private inflight: Promise<string> | null = null;

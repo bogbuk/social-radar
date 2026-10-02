@@ -66,7 +66,8 @@ export function parseAtom(xml: string, subreddit: string): Post[] {
 }
 
 export class RssClient {
-  constructor(private fetchFn: typeof fetch = fetch) {}
+  // Не `= fetch`: вызов this.fetchFn(...) передал бы экземпляр как this → Illegal invocation в Workers.
+  constructor(private fetchFn: typeof fetch = (input, init) => fetch(input, init)) {}
 
   async newPosts(sub: string, limit = 25): Promise<Post[]> {
     const res = await this.fetchFn(`https://www.reddit.com/r/${encodeURIComponent(sub)}/new.rss?limit=${limit}`, {

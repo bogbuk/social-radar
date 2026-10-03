@@ -56,7 +56,12 @@
     "exclude": [
       "hiring",
       "for sale",
-      "meme"
+      "meme",
+      "lease on",
+      "lease-on",
+      "lease onto",
+      "looking for a company",
+      "looking for a carrier"
     ]
   },
   "maxAgeHours": 24,

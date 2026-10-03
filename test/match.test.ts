@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { compileKeyword, matchKeywords, ageHours, prefilter } from '../src/match';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Post, ProjectConfig } from '../src/types';
 
 const post = (over: Partial<Post> = {}): Post => ({
@@ -54,4 +56,19 @@ describe('prefilter', () => {
   it('no_match when keywords absent', () => expect(prefilter(post({ title: 'truck stop food' }), project, now)).toBe('no_match'));
   it('matches in selftext too', () => expect(prefilter(post({ title: 'help', selftext: 'my HOS is confusing' }), project, now)).toBe('candidate'));
   it('future-dated post is still a candidate', () => expect(prefilter(post({ createdUtc: 1_000_000 + 600 }), project, now)).toBe('candidate'));
+});
+
+describe('loadlens config: негативный фильтр lease-on', () => {
+  const cfg = JSON.parse(readFileSync(join(__dirname, '..', 'projects', 'loadlens', 'config.json'), 'utf8')) as ProjectConfig;
+  it('пост новичка «ищу компанию под lease-on» отсеивается даже при позитивном слове', () => {
+    const text = 'Lease on\nI am looking to lease on to a company. I am new to this field. ' +
+      'I have been a delivery driver for the oilfield for 4 years. Non cdl. Any dispatcher advice?';
+    expect(matchKeywords(text, cfg.keywords)).toBe(false);
+  });
+  it('«lease-on» через дефис тоже отсеивается', () => {
+    expect(matchKeywords('Best lease-on carriers for a new owner op? ELD required?', cfg.keywords)).toBe(false);
+  });
+  it('обычный HOS-вопрос по-прежнему проходит', () => {
+    expect(matchKeywords('How does the 14 hour clock work with a split sleeper?', cfg.keywords)).toBe(true);
+  });
 });

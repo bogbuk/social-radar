@@ -2,6 +2,7 @@ import type { Card, Post, Project, Verdict } from './types';
 import { prefilter } from './match';
 import { loadSeen, saveSeen, type KVLike } from './seen';
 import { formatCard, formatOverflow } from './format';
+import { saveStats } from './stats';
 
 export interface TickDeps {
   projects: Project[];
@@ -35,9 +36,20 @@ export async function collectPosts(deps: TickDeps): Promise<Post[]> {
   return [...byId.values()].sort((a, b) => b.createdUtc - a.createdUtc);
 }
 
+// Итог тика (и оборванного тоже) уходит в KV `stats:last` → /health; сбой записи не должен ронять тик.
 export async function tick(deps: TickDeps): Promise<TickResult> {
   const log = deps.log ?? console.log;
-  const nowMs = deps.now();
+  const startedAt = deps.now();
+  const result = await runTick(deps, startedAt, log);
+  try {
+    await saveStats(deps.kv, { ...result, at: startedAt, durationMs: deps.now() - startedAt });
+  } catch (e) {
+    log('tick: stats save failed', String(e));
+  }
+  return result;
+}
+
+async function runTick(deps: TickDeps, nowMs: number, log: (...a: unknown[]) => void): Promise<TickResult> {
   const seen = await loadSeen(deps.kv);
 
   let posts: Post[];

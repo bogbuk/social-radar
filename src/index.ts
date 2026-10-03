@@ -7,6 +7,7 @@ import { buildMessages } from './prompt';
 import { sendTelegram } from './telegram';
 import { tick, type TickResult } from './tick';
 import { samplePost } from './sample';
+import { loadStats } from './stats';
 
 export interface Env {
   RADAR: KVNamespace;
@@ -59,6 +60,7 @@ export default {
         source: sourceKind(env),
         telegram: telegramConfigured(env),
         projects: PROJECTS.map((p) => p.slug),
+        lastTick: await loadStats(env.RADAR),
       });
     }
     if (url.pathname === '/run' && req.method === 'POST') {

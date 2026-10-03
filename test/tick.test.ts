@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { tick, collectPosts, type TickDeps } from '../src/tick';
 import { SEEN_KEY } from '../src/seen';
+import { STATS_KEY } from '../src/stats';
 import type { Post, Project } from '../src/types';
 
 const NOW = 1_700_000_000 * 1000;
@@ -17,6 +18,7 @@ const proj = (over: Partial<Project> = {}): Project => ({
   slug: 'loadlens', name: 'LoadLens', landing: 'https://x', subreddits: ['CDL'], keywords: { any: ['HOS'] },
   maxAgeHours: 24, threshold: 7, voice: 'v', ...over,
 });
+const statsOf = (kv: MemKv) => JSON.parse(kv._m.get(STATS_KEY) ?? 'null');
 const seenOf = (kv: MemKv) => Object.keys(JSON.parse(kv._m.get(SEEN_KEY) ?? '{}'));
 
 function deps(over: Partial<TickDeps> = {}): TickDeps & { sent: string[]; kv: MemKv } {
@@ -48,6 +50,20 @@ describe('collectPosts', () => {
 });
 
 describe('tick', () => {
+  it('records the tick result, start time and duration under stats:last', async () => {
+    let t = NOW;
+    const d = deps({ reddit: { newPosts: async () => [post('a')], search: async () => [] }, now: () => (t += 1000) - 1000 });
+    await tick(d);
+    expect(statsOf(d.kv)).toMatchObject({ at: NOW, fetched: 1, candidates: 1, sent: 1, queued: 0 });
+    expect(statsOf(d.kv).durationMs).toBeGreaterThan(0);
+  });
+  it('records an aborted tick under stats:last too', async () => {
+    const d = deps({ reddit: { newPosts: async () => { throw new Error('rss down'); }, search: async () => [] } });
+    await tick(d);
+    expect(statsOf(d.kv)).toMatchObject({ at: NOW, fetched: 0, sent: 0 });
+    expect(statsOf(d.kv).aborted).toContain('rss down');
+  });
+
   it('sends a card for a relevant candidate and marks it seen', async () => {
     const d = deps({ reddit: { newPosts: async () => [post('a')], search: async () => [] } });
     const r = await tick(d);

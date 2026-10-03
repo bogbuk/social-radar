@@ -2,6 +2,10 @@ name = "social-radar"
 main = "src/index.ts"
 compatibility_date = "2026-10-02"
 
+# Workers Logs: крон-события в `wrangler tail` не попадают, без этого истории тиков нет.
+[observability]
+enabled = true
+
 [triggers]
 crons = ["*/15 * * * *"]
 
